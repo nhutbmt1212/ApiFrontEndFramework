@@ -86,6 +86,16 @@ app.get('/sanpham/:id', (req, res) => {
         res.send(result);
     });
 });
+//sửa sản phẩm 
+app.put('/sanpham/:id', (req, res) => {
+    const productId = req.params.id;
+    const updateProduct = req.body;
+    let sql = 'UPDATE SANPHAM SET ? WHERE MaSanPham = ?';
+    db.query(sql, [updateProduct, productId], (err, result) => {
+        if (err) throw err;
+        res.send('Update product successfully');
+    });
+});
 
 
 //DANH MỤC
@@ -108,12 +118,15 @@ app.post('/hinhanh', upload.array('files'), (req, res) => {
         return;
     }
 
+    const MaSanPham = Array.isArray(req.body.MaSanPham) ? req.body.MaSanPham : [req.body.MaSanPham];
+
     const promises = req.files.map((file, index) => {
         return new Promise((resolve, reject) => {
             const newImage = {
-                MaSanPham: req.body.MaSanPham[index],
+                MaSanPham: MaSanPham[index],
                 TenFileAnh: file.filename
             };
+
             db.query(sql, newImage, (err, result) => {
                 if (err) {
                     reject(err);
@@ -131,6 +144,7 @@ app.post('/hinhanh', upload.array('files'), (req, res) => {
             res.status(500).send('Có lỗi xảy ra');
         });
 });
+
 app.get('/hinhanh/:id', (req, res) => {
     let sql = 'SELECT * FROM SANPHAM_HINHANH WHERE MaSanPham = ?';
     db.query(sql, [req.params.id], (err, result) => {
@@ -138,13 +152,27 @@ app.get('/hinhanh/:id', (req, res) => {
         res.send(result);
     });
 });
+
 app.delete('/hinhanh/:id', (req, res) => {
-    let sql = 'DELETE  FROM SANPHAM_HINHANH MaHinhAnh = ?';
-    db.query(sql, [req.params.id], (err, result) => {
+    const ImageId = req.params.id;
+    let sql = 'DELETE FROM SANPHAM_HINHANH WHERE MaHinhAnh = ?';
+    db.query(sql, ImageId, (err, result) => {
         if (err) throw err;
-        res.send("Xóa ảnh thành công");
+        res.send('Image deleted successfully');
     });
 });
+// lấy ảnh đầu tiên của một sản phẩm
+app.get('/layhinhanhdautien/:id', (req, res) => {
+    const MaSanPham = req.params.id;
+
+    let sql = `SELECT TenFileAnh FROM sanpham_hinhanh where MaSanPham="${MaSanPham}" limit 1`;
+    db.query(sql, (err, result) => {
+        if (err) throw err;
+        res.send(result);
+    });
+})
+
+
 app.listen(post, () => {
     console.log("Express app is running on localhost:" + post);
 })
