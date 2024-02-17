@@ -3,11 +3,11 @@ const cors = require("cors");
 const multer = require("multer");
 const mysql = require('mysql');
 const bodyParser = require("body-parser");
-
-
-
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcrypt');
 const app = express();
 const post = 4000;
+const jwtSecret = 'TruongMinhNhut';
 var corsOptions = {
     orgin: "http://localhost:4200/",
     optionsSuccessStatus: 200,
@@ -21,6 +21,7 @@ const db = mysql.createConnection({
 app.use("/images", express.static('uploads'));
 app.use(cors());
 app.use(bodyParser.json());
+
 app.get("/", (req, res) => {
     res.send("Welcome to Express App")
 })
@@ -171,6 +172,31 @@ app.get('/layhinhanhdautien/:id', (req, res) => {
         res.send(result);
     });
 })
+
+//login
+app.post('/login', (req, res) => {
+    const Email = req.body.Email;
+    const MatKhau = req.body.MatKhau;
+    db.query('SELECT * FROM NGUOIDUNG WHERE Email = ? ', [Email], async (error, results) => {
+        if (error) {
+            console.log(error);
+            res.status(500).send('Server error');
+        }
+        if (!results || results.length === 0 || MatKhau !== results[0].MatKhau) {
+            res.status(401).json({ message: 'Fail' });
+        }
+        else {
+            const id = results[0].id;
+            const token = jwt.sign({ id, results }, jwtSecret, {
+                expiresIn: '30d'
+            });
+            res.status(200).send({
+                MaNguoiDung: results[0].MaNguoiDung,
+                token
+            });
+        }
+    });
+});
 
 
 app.listen(post, () => {
