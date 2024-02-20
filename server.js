@@ -6,6 +6,7 @@ const bodyParser = require("body-parser");
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const app = express();
+var nodemailer = require('nodemailer');
 const post = 4000;
 const jwtSecret = 'TruongMinhNhut';
 var corsOptions = {
@@ -226,6 +227,96 @@ app.post('/login', (req, res) => {
         }
     });
 });
+//mk email butu cvoy gbbk wmtl
+//gửi mail
+app.post('/send-email', async (req, res) => {
+    let email = req.body.email;
+    let OTP = req.body.verificationCode;
+
+    let transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+            user: 'nhutbmt82@gmail.com',
+            pass: 'butu cvoy gbbk wmtl' // replace 'yourpassword' with your actual password
+        }
+    });
+
+    let mailOptions = {
+        from: 'nhutbmt82@gmail.com',
+        to: email,
+        subject: 'Sending Email using Node.js',
+        html: `<!DOCTYPE html>
+        <html>
+        <head>
+            <style>
+                body {
+                    font-family: Arial, sans-serif;
+                }
+                .email-container {
+                    width: 600px;
+                    margin: 0 auto;
+                    padding: 20px;
+                    border: 1px solid #ddd;
+                    border-radius: 5px;
+                }
+                .email-header {
+                    text-align: center;
+                    padding-bottom: 20px;
+                    border-bottom: 1px solid #ddd;
+                }
+                .email-body {
+                    margin-top: 20px;
+                }
+                .email-body button {
+                    display: block;
+                    margin: 0 auto;
+                    height: 60px;
+                    width: 160px;
+                    font-size: 20px;
+                    background-color: rgb(255, 80, 30);
+                    border: 0;
+                    color: white;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="email-container">
+                <div class="email-header">
+                    <h2>Thông báo từ Shopee Clone</h2>
+                </div>
+                <div class="email-body">
+                    <p>Chúng tôi nhận thấy bạn vừa đăng ký tài khoản ở app chúng tôi</p>
+                    <p>OTP của bạn là: ${OTP}</p>
+                    
+                </div>
+            </div>
+        </body>
+        <script>
+            function XacMinhEmail() {
+                localStorage.setItem('XacMinhEmail', true);
+            }
+        </script>
+        </html>`
+    };
+
+    try {
+        let info = await transporter.sendMail(mailOptions);
+        console.log('Email sent: ' + info.response);
+        res.json({ message: 'Email sent: ' + info.response });
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ error: 'Error sending email' });
+    }
+});
+//đăng ký tài khoản
+app.post('/register', (req, res) => {
+    const TaiKhoan = req.body;
+    let sql = 'INSERT INTO NGUOIDUNG SET ?';
+    db.query(sql, TaiKhoan, (err, result) => {
+        if (err) throw err;
+        res.send('Đăng ký thành công');
+    })
+})
 
 app.listen(post, () => {
     console.log("Express app is running on localhost:" + post);

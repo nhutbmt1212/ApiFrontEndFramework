@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+
+        .email-container {
+            width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+
+        .email-header {
+            text-align: center;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .email-body {
+            margin-top: 20px;
+        }
+
+        /* Thêm CSS để căn giữa nút */
+        .email-body button {
+            display: block;
+            margin: 0 auto;
+            height: 60px;
+            width: 160px;
+            font-size: 20px;
+            background-color: rgb(255, 80, 30);
+            border: 0;
+            color: white;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="email-container">
+        <div class="email-header">
+            <h2>Thông báo từ Shopee Clone</h2>
+        </div>
+        <div class="email-body">
+            <p>Chúng tôi nhận thấy bạn vừa đăng ký tài khoản ở app chúng tôi</p>
+            <p>Click vào đây để xác minh vào tạo mật khẩu:</p>
+            <button><a href="http://localhost:4200/register" onclick="XacMinhEmail()"
+                    style="text-decoration: none; color: white;">Xác
+                    minh</a></button>
+        </div>
+    </div>
+</body>
+<script>
+    function XacMinhEmail() {
+        localStorage.setItem('XacMinhEmail', true);
+    }
+</script>
+
+</html>
