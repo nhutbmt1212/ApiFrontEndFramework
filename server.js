@@ -97,7 +97,36 @@ app.put('/sanpham/:id', (req, res) => {
         res.send('Update product successfully');
     });
 });
+//xóa sản phẩm
+app.put('/xoasanpham/:id', (req, res) => {
+    const productId = req.params.id;
+    let sql = 'UPDATE sanpham SET TinhTrang ="Đã Xóa" where MaSanPham = ?'
+    db.query(sql, productId, (err, result) => {
+        if (err) throw err;
+        res.send("Xóa sản phẩm thành công");
+    })
+})
+//phân trang sp
+app.get('/page/:id', (req, res) => {
+    const page = req.params.id;
+    const limit = 2;
+    const offset = (page - 1) * limit;
 
+    const query = `
+      SELECT * FROM SANPHAM
+    
+      LIMIT ? OFFSET ?
+    `;
+
+    db.query(query, [limit, offset], (error, results) => {
+        if (error) {
+            console.log(error);
+            res.status(500).send('An error occurred while querying the database');
+        } else {
+            res.json(results);
+        }
+    });
+});
 
 //DANH MỤC
 //lấy danh mục
@@ -197,7 +226,6 @@ app.post('/login', (req, res) => {
         }
     });
 });
-
 
 app.listen(post, () => {
     console.log("Express app is running on localhost:" + post);
