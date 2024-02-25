@@ -9,10 +9,14 @@ const app = express();
 var nodemailer = require('nodemailer');
 const post = 4000;
 const jwtSecret = 'TruongMinhNhut';
+var fs = require('fs');
+const { basename } = require("path");
 var corsOptions = {
     orgin: "http://localhost:4200/",
     optionsSuccessStatus: 200,
 };
+
+
 const db = mysql.createConnection({
     host: 'localhost',
     user: 'root',
@@ -50,7 +54,9 @@ app.post("/file", upload.single("file"), (req, res) => {
         throw new Error("File upload not found");
     }
 
-})
+});
+//xóa ảnh 
+
 //upload nhiều file ảnh
 app.post("/multifiles", upload.array("files"), (req, res) => {
     const files = req.files;
@@ -65,7 +71,7 @@ app.post("/multifiles", upload.array("files"), (req, res) => {
 //SẢN PHẨM
 //lấy sản phẩm
 app.get('/sanpham', (req, res) => {
-    let sql = 'SELECT *FROM SANPHAM';
+    let sql = 'SELECT * FROM sanpham ORDER by NgayThem DESC';
     db.query(sql, (err, result) => {
         if (err) throw err;
         res.send(result);
@@ -138,6 +144,93 @@ app.get('/danhmuc', (req, res) => {
         res.send(result);
     });
 })
+//lấy danh mục theo id
+app.get('/danhmuc/:id', (req, res) => {
+    let sql = 'SELECT * FROM DANHMUCSANPHAM WHERE MaDanhMuc = ?';
+    db.query(sql, [req.params.id], (err, result) => {
+        if (err) throw err;
+        res.send(result);
+    });
+});
+app.post('/danhmuc', upload.single('file'), (req, res) => {
+    let sql = 'INSERT INTO DANHMUCSANPHAM SET ?';
+
+    if (!req.file) {
+        res.status(400).json({ message: 'Không có file nào được gửi lên' });
+        return;
+    }
+
+    const newCategory = {
+        MaDanhMuc: req.body.MaDanhMuc,
+        TenDanhMuc: req.body.TenDanhMuc,
+        NgayThem: new Date(),
+        TinhTrang: req.body.TinhTrang,
+        MoTa: req.body.MoTa,
+        HinhAnh: req.file.filename
+    };
+
+    db.query(sql, newCategory, (err, result) => {
+        if (err) {
+            console.error(err);
+            res.status(500).json({ message: 'Có lỗi xảy ra' });
+        } else {
+            res.json({ message: 'Thêm danh mục thành công' });
+        }
+    });
+});
+//sửa danh mục
+app.put('/danhmuc/:id', upload.single('file'), (req, res) => {
+    let sql = 'UPDATE DANHMUCSANPHAM SET ? WHERE MaDanhMuc = ?';
+
+    let updatedCategory = {
+        MaDanhMuc: req.body.MaDanhMuc,
+        TenDanhMuc: req.body.TenDanhMuc,
+        NgayThem: new Date(),
+        TinhTrang: req.body.TinhTrang,
+        MoTa: req.body.MoTa,
+    };
+
+    if (req.file) {
+        updatedCategory.HinhAnh = req.file.filename;
+    }
+
+    db.query(sql, [updatedCategory, req.params.id], (err, result) => {
+        if (err) {
+            console.error(err);
+            res.status(500).json({ message: 'Có lỗi xảy ra' });
+        } else {
+            res.json({ message: 'Cập nhật danh mục thành công' });
+        }
+    });
+
+});
+//xóa danh mục
+app.put('/xoadanhmuc/:id', (req, res) => {
+    let sql = 'UPDATE DANHMUCSANPHAM SET TinhTrang = "Đã xóa" WHERE MaDanhMuc = ?';
+
+    db.query(sql, req.params.id, (err, result) => {
+        if (err) {
+            console.error(err);
+            res.status(500).json({ message: 'Có lỗi xảy ra' });
+        } else {
+            res.json({ message: 'Đánh dấu danh mục như đã xóa thành công' });
+        }
+    });
+});
+
+//lấy hình ảnh đầu tiên của danh mục
+app.get('/layhinhanhdanhmucdautien/:id', (req, res) => {
+    const MaDanhMuc = req.params.id;
+
+    let sql = `SELECT HinhAnh FROM DANHMUCSANPHAM where MaDanhMuc="${MaDanhMuc}" limit 1`;
+    db.query(sql, (err, result) => {
+        if (err) throw err;
+        res.send(result);
+    });
+})
+
+
+
 //SẢN PHẨM HÌNH ẢNH
 app.use("/layhinhanh", express.static('uploads'));
 
@@ -185,13 +278,34 @@ app.get('/hinhanh/:id', (req, res) => {
 });
 
 app.delete('/hinhanh/:id', (req, res) => {
-    const ImageId = req.params.id;
-    let sql = 'DELETE FROM SANPHAM_HINHANH WHERE MaHinhAnh = ?';
-    db.query(sql, ImageId, (err, result) => {
+    let ImageId = req.params.id;
+    let getImageFromSql = `SELECT TenFileAnh FROM SANPHAM_HINHANH WHERE MaHinhAnh = ?`;
+    db.query(getImageFromSql, [ImageId], (err, result) => {
         if (err) throw err;
-        res.send('Image deleted successfully');
+
+        if (result.length > 0) {
+            let fileName = result[0].TenFileAnh;
+            fs.unlink(`./uploads/${fileName}`, function (err) {
+                if (err && err.code == 'ENOENT') {
+                    console.info("File doesn't exist, won't remove it.");
+                } else if (err) {
+                    console.error("Error occurred while trying to remove file");
+                } else {
+                    console.info(`removed`);
+                }
+            });
+
+            let sql = 'DELETE FROM SANPHAM_HINHANH WHERE MaHinhAnh = ?';
+            db.query(sql, [ImageId], (err, result) => {
+                if (err) throw err;
+                res.send('Image deleted successfully');
+            });
+        } else {
+            res.send('No image found with the provided ID');
+        }
     });
 });
+
 // lấy ảnh đầu tiên của một sản phẩm
 app.get('/layhinhanhdautien/:id', (req, res) => {
     const MaSanPham = req.params.id;
@@ -202,6 +316,150 @@ app.get('/layhinhanhdautien/:id', (req, res) => {
         res.send(result);
     });
 })
+//Lấy người dùng
+//lấy hình ảnh đầu tiên của danh mục
+app.get('/nguoidung', (req, res) => {
+
+    let sql = `SELECT * FROM NGUOIDUNG`;
+    db.query(sql, (err, result) => {
+        if (err) throw err;
+        res.send(result);
+    });
+})
+//lưu thông tin người dùng
+app.put('/nguoidung/:id', (req, res) => {
+    let sql = 'UPDATE NGUOIDUNG SET ? WHERE MaNguoiDung = ?';
+    let updatedUser = {
+        MaNguoiDung: req.body.MaNguoiDung,
+        TenNguoiDung: req.body.TenNguoiDung,
+        SoDienThoai: req.body.SoDienThoai,
+        GioiTinh: req.body.GioiTinh,
+        DiaChi: req.body.DiaChi,
+        CCCD: req.body.CCCD
+    }
+    db.query(sql, [updatedUser, req.params.id], (err, result) => {
+        if (err) {
+            res.json({ message: false });
+        }
+        else {
+            res.json({ message: true });
+        }
+    })
+})
+//thay đổi thông tin người dùng từ client
+app.put('/clientthaynguoidung/:id', (req, res) => {
+    let updatedUser = {};
+    if (req.body.MaNguoiDung !== null) updatedUser.MaNguoiDung = req.body.MaNguoiDung;
+    if (req.body.TenNguoiDung !== null) updatedUser.TenNguoiDung = req.body.TenNguoiDung;
+    if (req.body.SoDienThoai !== null) updatedUser.SoDienThoai = req.body.SoDienThoai;
+    if (req.body.GioiTinh !== null) updatedUser.GioiTinh = req.body.GioiTinh;
+    if (req.body.DiaChi !== null) updatedUser.DiaChi = req.body.DiaChi;
+    if (req.body.CCCD !== null) updatedUser.CCCD = req.body.CCCD;
+    if (req.body.Email !== null) updatedUser.Email = req.body.Email;
+
+    // Thêm các trường khác nếu cần
+
+    if (req.body.MatKhau !== null) {
+        bcrypt.hash(req.body.MatKhau, 10, function (err, hash) {
+            if (err) {
+                res.json({ message: false });
+            } else {
+                updatedUser.MatKhau = hash;
+                let sql = 'UPDATE NGUOIDUNG SET ? WHERE MaNguoiDung = ?';
+                db.query(sql, [updatedUser, req.params.id], (err, result) => {
+                    if (err) {
+                        res.json({ message: false });
+                    }
+                    else {
+                        res.json({ message: true });
+                    }
+                })
+            }
+        })
+    }
+    else {
+        let sql = 'UPDATE NGUOIDUNG SET ? WHERE MaNguoiDung = ?';
+        db.query(sql, [updatedUser, req.params.id], (err, result) => {
+            if (err) {
+                res.json({ message: false });
+            }
+            else {
+                res.json({ message: true });
+            }
+        })
+    }
+})
+app.get('/laynguoidungtheoid/:id', (req, res) => {
+    let sql = 'SELECT * FROM NGUOIDUNG WHERE MaNguoiDung = ?';
+    db.query(sql, req.params.id, (err, result) => {
+        if (err) console.error(err);
+        else {
+            res.send(result);
+        }
+    })
+})
+//kiểm tra trùng số điện thoại 
+app.get('/checkTrungSDT/:sdt/:mnd', (req, res) => {
+    const phoneNumber = req.params.sdt;
+    const maNguoiDung = req.params.mnd;
+
+    const sql = 'SELECT * FROM NGUOIDUNG WHERE SoDienThoai = ? AND MaNguoiDung != ? ';
+
+    db.query(sql, [phoneNumber, maNguoiDung], (err, result) => {
+        if (err) {
+            console.error(err);
+            res.status(500).json({ error: 'Internal server error' });
+            return;
+        }
+
+        if (result.length > 0) {
+            res.json({ exists: true });
+        } else {
+            res.json({ exists: false });
+        }
+    });
+});
+
+app.get('/checkTrungCCCD/:cccd/:mnd', (req, res) => {
+    const CCCD = req.params.cccd;
+    const maNguoiDung = req.params.mnd;
+
+    const sql = 'SELECT * FROM NGUOIDUNG WHERE CCCD = ? AND maNguoiDung != ? ';
+
+    db.query(sql, [CCCD, maNguoiDung], (err, result) => {
+        if (err) {
+            console.error(err);
+            res.status(500).json({ error: 'Internal server error' });
+            return;
+        }
+
+        if (result.length > 0) {
+            res.json({ exists: true });
+        } else {
+            res.json({ exists: false });
+        }
+    });
+});
+app.get('/checkTrungEmail/:email/:mnd', (req, res) => {
+    const Email = req.params.email;
+    const maNguoiDung = req.params.mnd;
+
+    const sql = 'SELECT * FROM NGUOIDUNG WHERE Email = ? AND maNguoiDung != ? ';
+
+    db.query(sql, [Email, maNguoiDung], (err, result) => {
+        if (err) {
+            console.error(err);
+            res.status(500).json({ error: 'Internal server error' });
+            return;
+        }
+
+        if (result.length > 0) {
+            res.json({ exists: true });
+        } else {
+            res.json({ exists: false });
+        }
+    });
+});
 
 //login
 app.post('/login', (req, res) => {
@@ -212,21 +470,32 @@ app.post('/login', (req, res) => {
             console.log(error);
             res.status(500).send('Server error');
         }
-        if (!results || results.length === 0 || MatKhau !== results[0].MatKhau) {
+        if (!results || results.length === 0) {
             res.status(401).json({ message: 'Fail' });
         }
         else {
-            const id = results[0].id;
-            const token = jwt.sign({ id, results }, jwtSecret, {
-                expiresIn: '30d'
-            });
-            res.status(200).send({
-                MaNguoiDung: results[0].MaNguoiDung,
-                token
+
+            // // Sử dụng hàm bcrypt.compare để so sánh mật khẩu
+            bcrypt.compare(MatKhau, results[0].MatKhau, function (err, result) {
+                if (result == true) {
+                    console.log('đúng');
+                    const id = results[0].id;
+                    const token = jwt.sign({ id, results }, jwtSecret, {
+                        expiresIn: '30d'
+                    });
+                    res.status(200).send({
+                        MaNguoiDung: results[0].MaNguoiDung,
+                        token
+                    });
+                } else {
+                    console.log('sai');
+                    res.status(401).json({ message: 'Fail' });
+                }
             });
         }
     });
 });
+
 //mk email butu cvoy gbbk wmtl
 //gửi mail
 app.post('/send-email', async (req, res) => {
@@ -244,7 +513,7 @@ app.post('/send-email', async (req, res) => {
     let mailOptions = {
         from: 'nhutbmt82@gmail.com',
         to: email,
-        subject: 'Sending Email using Node.js',
+        subject: 'Xác nhận mật khẩu',
         html: `<!DOCTYPE html>
         <html>
         <head>
@@ -310,11 +579,32 @@ app.post('/send-email', async (req, res) => {
 });
 //đăng ký tài khoản
 app.post('/register', (req, res) => {
-    const TaiKhoan = req.body;
-    let sql = 'INSERT INTO NGUOIDUNG SET ?';
-    db.query(sql, TaiKhoan, (err, result) => {
-        if (err) throw err;
-        res.send('Đăng ký thành công');
+    let TaiKhoan = req.body;
+    bcrypt.hash(TaiKhoan.MatKhau, 10, function (err, hash) {
+        TaiKhoan.MatKhau = hash;
+        console.log(TaiKhoan);
+        let sql = 'INSERT INTO NGUOIDUNG SET ?';
+        db.query(sql, TaiKhoan, (err, result) => {
+            if (err) throw err;
+            res.send('Đăng ký thành công');
+        })
+    })
+
+
+})
+//test mã hóa mật khẩu
+app.get('/mahoa/:id', (req, res) => {
+    const id = req.params.id;
+    bcrypt.hash(id, 10, function (err, hash) {
+        res.send(hash);
+    })
+})
+
+//encode password
+app.get('/giaima/:id', (req, res) => {
+    const id = req.params.id;
+    bcrypt.compare(id, "$2b$10$j2vJAK23RQXTHG5FvkMVCeMxe5JS.2D3RYUXgWfCfZAL.Rk2Q4btS", function (err, result) {
+        res.send(result);
     })
 })
 
