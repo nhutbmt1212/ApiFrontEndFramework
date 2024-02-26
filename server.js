@@ -592,21 +592,6 @@ app.post('/register', (req, res) => {
 
 
 })
-//test mã hóa mật khẩu
-app.get('/mahoa/:id', (req, res) => {
-    const id = req.params.id;
-    bcrypt.hash(id, 10, function (err, hash) {
-        res.send(hash);
-    })
-})
-
-//encode password
-app.get('/giaima/:id', (req, res) => {
-    const id = req.params.id;
-    bcrypt.compare(id, "$2b$10$j2vJAK23RQXTHG5FvkMVCeMxe5JS.2D3RYUXgWfCfZAL.Rk2Q4btS", function (err, result) {
-        res.send(result);
-    })
-})
 
 app.listen(post, () => {
     console.log("Express app is running on localhost:" + post);
